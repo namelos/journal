@@ -6,8 +6,11 @@ import config from '../webpack.config'
 import React from 'react'
 import { renderToString } from 'react-dom/server'
 import { StaticRouter } from 'react-router'
+import { createStore } from 'redux'
+import { Provider } from 'react-redux'
 
 import { App } from '../shared/App'
+import { counter } from '../shared/reducers/counter'
 
 const app = express()
 
@@ -17,12 +20,17 @@ app.use(webpackMiddleware(webpack(config), {
 
 app.get('/*', (req, res) => {
   const context = {}
+  const store = createStore(counter)
 
   const html = renderToString(
     <StaticRouter location={req.url} context={context}>
-      <App/>
+      <Provider store={store}>
+        <App/>
+      </Provider>
     </StaticRouter>
   )
+
+  const preloadedState = store.getState()
 
   if (context.url) {
     res.redirect(context.url)
@@ -31,6 +39,9 @@ app.get('/*', (req, res) => {
     <!doctype html>
     <body>
       <div id="app">${html}</div>
+      <script>
+        window.__PRELOADED_STATE__ = ${JSON.stringify(preloadedState).replace(/</g, '\\u003c')}
+      </script>
       <script src="static/bundle.js"></script>
     </body>
     `)
